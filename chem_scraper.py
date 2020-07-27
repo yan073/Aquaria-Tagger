@@ -30,10 +30,10 @@ class ChemScraper:
         print('                                         settings.source_list')
         print('  scrape_mapping <from_id> <to_id>       Scrape record mappings for source <from_id> to source')
         print('                                         <to_id>')
-        print('  scrape_pdb                             Scrape')
-        print('  create_pdb_synonym_list <source_id>    Scrape')
-        print('  create_source_synonym_list <source_id> Scrape')
-        print('  count_small_molecules                  Scrape')
+        print('  scrape_pdb                             Populate the chemscraper.chem_component table from PDB')
+        print('  create_pdb_synonym_list <source_id>    Create a mapping file between PDB and the source')
+        print('  create_source_synonym_list <source_id> Create a source synonym file')
+        print('  count_small_molecules                  Create a file of small molecule counts')
 
 
     def scrape_source_names(self):
