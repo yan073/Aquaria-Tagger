@@ -1,7 +1,7 @@
 # Aquaria-Tagger
 <p>All operations via the chem_scraper.py script.</p>
 <p>Usage:</p>
-python3 chem_scraper [option]
+python3 chem_scraper.py [option]
 <p></p>
 <p>Options:</p>
 <table>
