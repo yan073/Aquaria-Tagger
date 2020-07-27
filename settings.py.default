@@ -1,0 +1,67 @@
+"""
+Application settings
+Remove the '.default' part of this file name or copy file to 'settings.py' and fill in
+all [...] values and modify others as required.
+"""
+# Directory to download temporary files (include '/' at end)
+temporary_file_location = '/[your_output_path]/'
+# List of UniChem source IDs to be scraped
+source_list = {
+    1: {
+        'module_name': 'chembl_scraper',
+        'class_name': 'ChEMBLScraper'
+    },
+    2: {
+        'module_name': 'drugbank_scraper',
+        'class_name': 'DrugBankScraper'
+    },
+    22: {
+        'module_name': 'pubchem_scraper_mysqldb',
+        'class_name': 'PubChemScraperMySQLdb'
+    }
+}
+# Database settings
+db_host = '[host]'
+db_name = 'chemscraper'
+db_port = '3306'
+db_user = '[user]'
+db_password ='[password]'
+
+chembl_db_host = '[host]'
+chembl_db_name = 'chembl_27'
+chembl_db_port = '3306'
+chembl_db_user = '[user]'
+chembl_db_password ='[password]'
+
+aquaria_db_host = 'database.aquaria.ws'
+aquaria_db_name = 'Aquaria_new3'
+aquaria_db_port = '3306'
+aquaria_db_user = '[username]'
+aquaria_db_password ='[password]'
+
+
+"""
+UniChem settings
+"""
+pdb_ftp_components_file = 'ftp://ftp.wwpdb.org/pub/pdb/data/monomers/components.cif'
+
+
+"""
+UniChem settings
+"""
+unichem_rest_url = 'https://www.ebi.ac.uk/unichem/rest/'
+unichem_ftp_url = 'ftp://ftp.ebi.ac.uk/pub/databases/chembl/UniChem/data/wholeSourceMapping/'
+
+
+"""
+PubChem settings
+"""
+# FTP host for downloading zipped compound files (just host, don't prepend 'ftp' and don't append path)
+pubchem_ftp_host = 'ftp.ncbi.nlm.nih.gov'
+pubchem_ftp_compound_directory = '/pubchem/Compound/CURRENT-Full/XML'
+
+
+"""
+DrugBank settings
+"""
+drugbank_synonym_file_url = 'https://www.drugbank.ca/releases/5-1-7/downloads/all-drugbank-vocabulary'
