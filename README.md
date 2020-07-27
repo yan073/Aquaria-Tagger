@@ -14,5 +14,5 @@ python3 chem_scraper.py [option]
 <tr><td>scrape_pdb</td><td>Populate the chemscraper.chem_component table from PDB</td></tr>
 <tr><td>create_pdb_synonym_list &lt;source_id&gt;</td><td>Create a mapping file between PDB and a source</td></tr>
 <tr><td>create_source_synonym_list &lt;source_id&gt;</td><td>Create a synonym file for a source</td></tr>
-<tr><td>count_small_molecules</td><td>Create a file of smal moecule counts</td></tr>
+<tr><td>count_small_molecules</td><td>Create a file of small molecule counts</td></tr>
 </table>

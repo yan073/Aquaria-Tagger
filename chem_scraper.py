@@ -51,7 +51,7 @@ class ChemScraper:
         Scrape a specific source for compound names and synonyms and populate the
         chemscraper.chem_record and chem_scraper.chem_name tables.
         :param source_id: the ID of the source to scrape as defined in settings.py (will match
-        the UniChem surce ID)
+        the UniChem source ID)
         """
         now = datetime.now()
         try:
