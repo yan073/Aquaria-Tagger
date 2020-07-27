@@ -138,15 +138,17 @@ class ChemScraper:
                                    db=settings.db_name,
                                    user=settings.db_user,
                                    passwd=settings.db_password,
-                                   charset="utf8")
+                                   charset="utf8",
+                                   cursorclass=MySQLdb.cursors.SSCursor)
             now = datetime.now()
             dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
             logging.info("Querying database: %s" % dt_string)
             if source_id is None:
                 query = """
-                    SELECT m.from_id, n.compound_name FROM chem_mapping as m
+                    SELECT DISTINCT m.from_id, n.compound_name FROM chem_mapping as m
                     JOIN chem_record as r ON m.to_id = r.id
-                    JOIN chem_name as n ON n.record_key = r.id;
+                    JOIN chem_name as n ON n.record_key = r.id
+                    WHERE m.from_source_id = 3;
                 """
                 file_name = "pdb_synonyms.txt"
             else:
@@ -157,22 +159,24 @@ class ChemScraper:
                     WHERE m.to_source_id = {to_source_id};
                 """.format(to_source_id=source_id)
                 file_name = "pdb_synonyms_src_%s.txt" % source_id
-            cursor = conn.cursor()
-            cursor.execute(query)
-            results = cursor.fetchall()
-            now = datetime.now()
-            dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-            logging.info("Querying complete, writing file: %s" % dt_string)
+
             file_path = settings.temporary_file_location + file_name
             f = open(file_path, "w")
-            for record in results:
-                if source_id > 3:
-                    from_id = record[0]
-                    to_id = record[1]
-                else:
-                    from_id = record[1]
-                    to_id = record[0]
-                f.write("%s    %s\n" % (from_id, to_id))
+
+            cursor = conn.cursor()
+            cursor.execute(query)
+
+            results = cursor.fetchmany(size=10000)
+            while results:
+                for record in results:
+                    if source_id is None or source_id > 3:
+                        from_id = record[0]
+                        to_id = record[1]
+                    else:
+                        from_id = record[1]
+                        to_id = record[0]
+                    f.write("%s\t%s\n" % (from_id, to_id))
+                results = cursor.fetchmany(size=10000)
             now = datetime.now()
             dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
             logging.info("File written: %s" % dt_string)
