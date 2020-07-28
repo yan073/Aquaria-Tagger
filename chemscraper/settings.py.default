@@ -16,8 +16,8 @@ source_list = {
         'class_name': 'DrugBankScraper'
     },
     22: {
-        'module_name': 'pubchem_scraper_mysqldb',
-        'class_name': 'PubChemScraperMySQLdb'
+        'module_name': 'pubchem_scraper',
+        'class_name': 'PubChemScraper'
     }
 }
 # Database settings

@@ -50,7 +50,7 @@ class DrugBankScraper:
 
             logging.info('Downloading CSV file')
             local_csv_file = self.download_drugbank_synonym_file()
-            if local_csv_file:
+            if local_csv_file is not None:
                 query_record_data = []
                 query_name_data = []
                 with open(local_csv_file, encoding='utf-8') as csv_file:
@@ -69,14 +69,16 @@ class DrugBankScraper:
                             # Synonyms
                             synonyms = row[5].split('|')
                             for s in synonyms:
-                                if s != row[2]:
+                                if s.strip() != row[2]:
                                     query_name_data.append((s.strip(), current_record_pk_id))
+                            # InChIKey (if present)
+                            if len(row) > 6 and row[6] != '':
+                                query_name_data.append((row[6], current_record_pk_id))
                             line_count += 1
                 cursor = conn.cursor()
                 query = 'INSERT INTO chem_record(id, source_key, source_id) VALUES(%s, %s, %s)'
                 cursor.executemany(query, query_record_data)
                 conn.commit()
-
                 query = 'INSERT INTO chem_name(compound_name, record_key) VALUES(%s, %s)'
                 cursor.executemany(query, query_name_data)
                 conn.commit()
@@ -108,7 +110,7 @@ class DrugBankScraper:
             logging.info('File downloaded, unzipping')
             with zipfile.ZipFile(local_zip_file, 'r') as zip_ref:
                 zip_ref.extractall(settings.temporary_file_location)
-            return settings.temporary_file_location + 'drugbank_vocabulary.csv'
+            return settings.temporary_file_location + 'drugbank vocabulary.csv'
         except Exception:
             logging.exception('')
             return None

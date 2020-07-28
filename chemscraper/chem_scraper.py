@@ -49,7 +49,7 @@ class ChemScraper:
     def scrape_source(self, source_id):
         """
         Scrape a specific source for compound names and synonyms and populate the
-        chemscraper.chem_record and chem_scraper.chem_name tables.
+        chemscraper.chem_record and chemscraper.chem_name tables.
         :param source_id: the ID of the source to scrape as defined in settings.py (will match
         the UniChem source ID)
         """
@@ -71,7 +71,7 @@ class ChemScraper:
     def scrape_all_sources(self):
         """
         Scrape all sources defined in settings.source_list for compound names and synonyms
-        and populate the chemscraper.chem_record and chem_scraper.chem_name tables.
+        and populate the chemscraper.chem_record and chemscraper.chem_name tables.
         """
         logging.info('Scraping all sources')
         for source_id in settings.source_list:
@@ -92,7 +92,7 @@ class ChemScraper:
 
     def scrape_pdb(self):
         """
-        Scrape PDB site for components to populate the chem_scraper.chem_component table.
+        Scrape PDB site for components to populate the chemscraper.chem_component table.
         """
         PDBScraper().scrape()
 

@@ -49,21 +49,33 @@ class ChEMBLScraper:
                                           charset="utf8",
                                           cursorclass=MySQLdb.cursors.SSCursor)
             cursor_chembl = conn_chembl.cursor()
-
             query = """
-                SELECT DISTINCT chem_mol.chembl_id, chem_rec.compound_name
-                FROM molecule_dictionary AS chem_mol JOIN compound_records as chem_rec
-                ON chem_rec.molregno = chem_mol.molregno
+                SELECT DISTINCT chem_mol.chembl_id, chem_rec.compound_name, chem_struct.standard_inchi_key
+                FROM molecule_dictionary AS chem_mol
+                JOIN compound_records as chem_rec ON chem_rec.molregno = chem_mol.molregno
+                JOIN compound_structures as chem_struct ON chem_struct.molregno = chem_rec.molregno
+                ORDER BY chem_mol.chembl_id
             """
             cursor_chembl.execute(query)
             rows = cursor_chembl.fetchmany(size=10000)
             while rows:
                 query_record_data = []
                 query_name_data = []
+                current_chembl_id = ''
+                current_inchikey_list = []
                 for r in rows:
-                    current_record_pk_id = current_record_pk_id + 1
-                    query_record_data.append((current_record_pk_id, self.SOURCE_ID, r[0]))
+                    # New ChEMBL ID
+                    if current_chembl_id != r[0]:
+                        current_chembl_id = r[0]
+                        current_inchikey_list = []
+                        current_record_pk_id = current_record_pk_id + 1
+                        query_record_data.append((current_record_pk_id, self.SOURCE_ID, r[0]))
                     query_name_data.append((r[1], current_record_pk_id))
+                    # InChIKey present and not currently in list, add to names
+                    if r[2] and r[2] != '':
+                        if r[2] not in current_inchikey_list:
+                            current_inchikey_list.append(r[2])
+                            query_name_data.append((r[2], current_record_pk_id))
                 query = 'INSERT INTO chem_record(id, source_key, source_id) VALUES(%s, %s, %s)'
                 cursor_chemscraper.executemany(query, query_record_data)
                 conn_chemscraper.commit()
@@ -72,7 +84,6 @@ class ChEMBLScraper:
                 conn_chemscraper.commit()
 
                 rows = cursor_chembl.fetchmany(size=10000)
-
         except Exception:
             logging.error('Error scraping ChEMBL')
             logging.exception('')
@@ -83,53 +94,5 @@ class ChEMBLScraper:
                 cursor_chembl.close()
             if conn_chemscraper:
                 conn_chemscraper.close()
-            if conn_chembl:
-                conn_chembl.close()
-
-
-    def create_synonym_list(self):
-        """
-        Convenience method to create text file directly from ChEMBL DB until chemscraper DB
-        can be populated.
-        """
-        now = datetime.now()
-        dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-        logging.info('Scraping ChEMBL: %s' % dt_string)
-        conn_chembl = None
-        cursor_chembl = None
-        f = None
-        try:
-            file_path = settings.temporary_file_location + "source_synonyms_src_1.txt"
-            f = open(file_path, "w", encoding="utf-8")
-
-            conn_chembl = MySQLdb.connect(host=settings.chembl_db_host,
-                                          db=settings.chembl_db_name,
-                                          user=settings.chembl_db_user,
-                                          passwd=settings.chembl_db_password,
-                                          charset="utf8",
-                                          cursorclass=MySQLdb.cursors.SSCursor)
-            cursor_chembl = conn_chembl.cursor()
-            query = """
-                SELECT DISTINCT chem_mol.chembl_id, chem_rec.compound_name
-                FROM molecule_dictionary AS chem_mol JOIN compound_records as chem_rec
-                ON chem_rec.molregno = chem_mol.molregno
-            """
-            cursor_chembl.execute(query)
-            rows = cursor_chembl.fetchmany(size=10000)
-            while rows:
-                for r in rows:
-                    f.write("%s\t%s\n" % (r[0], r[1]))
-                rows = cursor_chembl.fetchmany(size=10000)
-            now = datetime.now()
-            dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
-            logging.info('Scraping complete: %s' % dt_string)
-        except Exception:
-            logging.error('Error scraping ChEMBL')
-            logging.exception('')
-        finally:
-            if f:
-                f.close()
-            if cursor_chembl:
-                cursor_chembl.close()
             if conn_chembl:
                 conn_chembl.close()
