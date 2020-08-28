@@ -69,12 +69,13 @@ class DrugBankScraper:
                             # Synonyms
                             synonyms = row[5].split('|')
                             for s in synonyms:
-                                if s.strip() != row[2]:
+                                if s.strip() != row[2] and s.strip() != 'NA' and s.strip() != '':
                                     query_name_data.append((s.strip(), current_record_pk_id))
                             # InChIKey (if present)
                             if len(row) > 6 and row[6] != '':
                                 query_name_data.append((row[6], current_record_pk_id))
                             line_count += 1
+
                 cursor = conn.cursor()
                 query = 'INSERT INTO chem_record(id, source_key, source_id) VALUES(%s, %s, %s)'
                 cursor.executemany(query, query_record_data)
