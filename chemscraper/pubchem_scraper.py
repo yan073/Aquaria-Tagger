@@ -127,13 +127,6 @@ class PubChemScraper:
                         dt_string = now.strftime("%d/%m/%Y %H:%M:%S")
                         logging.info("Parsing finished, writing results to DB at %s" % dt_string)
 
-                        """
-                        logging.info('records')
-                        logging.info(str(query_record_data))
-                        logging.info('names')
-                        logging.info(str(query_name_data))
-                        """
-
                         conn = MySQLdb.connect(host=settings.db_host,
                                                db=settings.db_name,
                                                user=settings.db_user,
