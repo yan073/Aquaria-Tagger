@@ -1,0 +1,91 @@
+Creating Tagger Lists
+
+1. Harvesting Records and Synonyms
+
+The first step in creating lists for the Aquaria Tagger is to harvest records and synonyms from three different publically accessible sources. A database is created to store each of the records and the names (synonyms) for each record at the source. The database schema can be viewed at https://github.com/ODonoghueLab/Aquaria-Tagger/blob/master/chemscraper/chem_scraper_mysql.sql.
+
+Each source is accessed differently and thus requires a different process. A brief description of the process for each of the three sources follows:
+
+A. PubChem(https://pubchem.ncbi.nlm.nih.gov/)
+
+PubChem's FTP site is accessed and compound record data is downloaded and stored locally as zipped XML files. These files are then parsed one record at a time until a name list is built for each record and the results stored in the database.
+
+Each record will usually have multiple names specified under a PC-InfoData element whose label is "IUPAC Name", an example is shown below:
+
+  <PC-InfoData>
+    <PC-InfoData_urn>
+      <PC-Urn>
+        <PC-Urn_label>IUPAC Name</PC-Urn_label>
+        <PC-Urn_name>Preferred</PC-Urn_name>
+        <PC-Urn_datatype>
+          <PC-UrnDataType value="string">1</PC-UrnDataType>
+        </PC-Urn_datatype>
+        <PC-Urn_version>2.6.6</PC-Urn_version>
+        <PC-Urn_software>LexiChem</PC-Urn_software>
+        <PC-Urn_source>openeye.com</PC-Urn_source>
+        <PC-Urn_release>2019.06.18</PC-Urn_release>
+      </PC-Urn>
+    </PC-InfoData_urn>
+    <PC-InfoData_value>
+      <PC-InfoData_value_sval>3-acetyloxy-4-(trimethylazaniumyl)butanoate</PC-InfoData_value_sval>
+    </PC-InfoData_value>
+  </PC-InfoData>
+  
+Some names are filtered out based on the PC-Urn_name value as they were not found to be useful for our purposes.
+
+
+B. DrugBank (https://www.drugbank.ca/)
+
+DrugBank helpfully provides a CSV synonym file for its records.
+
+The first few lines of the file is provided below:
+
+DrugBank ID,Accession Numbers,Common name,CAS,UNII,Synonyms,Standard InChI Key
+DB00001,BIOD00024 | BTD00024,Lepirudin,138068-37-8,Y43GF64R34,Hirudin variant-1 | Lepirudin recombinant,
+DB00002,BIOD00071 | BTD00071,Cetuximab,205923-56-4,PQX0D8J21J,Cetuximab | Cétuximab | Cetuximabum,
+
+This files is downloaded and parsed one line at a time to build a list of names and synonyms agaist the provided DrugBank ID. The value of the name column is added, and each value in the "synonyms" column is checked to make sure it doesn't match the value in the "name" column. The InChIKey is also stored as a name.
+
+
+C. ChEMBL (https://www.ebi.ac.uk/chembl/)
+
+The ChEMBL MySQL database is downloaded from their website so it can be easily queried to obtain the information we require. The tables and columns queried include:
+
+molecule_dictionary.chembl_id: The ChEMBL ID.
+molecule_dictionary.pref_name: The preferred name for the molecule.
+molecule_synonyms.synonyms: Synonyms of the molecule.
+compound_structures.standard_inchi_key: The InChIKey.
+
+
+2. Creating Mappings
+
+After harvesting, UniChem's (https://www.unichem.co.nz/) REST service is queried to retrieve mappings from each of the three sources to PDB (https://www.rcsb.org/) codes. An example of a mapping file (from ChEMBL to PDB) is hown below:
+
+From src:'1'	To src:'3'
+CHEMBL1399676	MQN
+CHEMBL2347208	1HL
+CHEMBL3342582	8CF
+
+These files are parsed one line at a time and the mappings stored in our database.
+
+
+3. Creating Source Lists
+
+Creating a list from a source is achieved by querying the records and names for a specific source in our database. The SQL will be of the form:
+
+SELECT r.source_id, n.compound_name
+FROM chem_name as n JOIN chem_record as r
+ON r.id = n.record_key
+WHERE r.source_key = {source_key};
+
+
+4. Creating a PDB List
+
+To create a PDB synonym list, the database is queried to retrieve the list of PDB codes that are stored in the mapping table. Records and names for each of the 3 sources are queried and mapped to the PDB codes.
+
+The query is:
+
+SELECT DISTINCT m.from_id, n.compound_name FROM chem_mapping as m
+JOIN chem_record as r ON m.to_id = r.id
+JOIN chem_name as n ON n.record_key = r.id
+WHERE m.from_source_id = {source_key};
