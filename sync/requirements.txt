@@ -1,0 +1,4 @@
+pymongo
+schedule
+configparser
+dnspython

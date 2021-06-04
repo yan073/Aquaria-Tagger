@@ -70,12 +70,16 @@ class ChEMBLScraper:
                         current_inchikey_list = []
                         current_record_pk_id = current_record_pk_id + 1
                         query_record_data.append((current_record_pk_id, self.SOURCE_ID, r[0]))
-                    query_name_data.append((r[1], current_record_pk_id))
+
+                    if r[1] is not None and r[1] != 'NA':
+                        query_name_data.append((r[1], current_record_pk_id))
+
                     # InChIKey present and not currently in list, add to names
                     if r[2] and r[2] != '':
                         if r[2] not in current_inchikey_list:
                             current_inchikey_list.append(r[2])
                             query_name_data.append((r[2], current_record_pk_id))
+
                 query = 'INSERT INTO chem_record(id, source_key, source_id) VALUES(%s, %s, %s)'
                 cursor_chemscraper.executemany(query, query_record_data)
                 conn_chemscraper.commit()

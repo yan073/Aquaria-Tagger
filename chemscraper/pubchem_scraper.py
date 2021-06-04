@@ -79,6 +79,7 @@ class PubChemScraper:
                             else:
                                 time.sleep(60)
                                 continue
+
                     if file_loaded:
                         with gopen(local_file_path) as xml_file:
                             now = datetime.now()
@@ -88,17 +89,38 @@ class PubChemScraper:
                             context = ET.iterparse(xml_file)
                             query_record_data = []
                             query_name_data = []
+
+                            current_record_name_list = []
+
                             for event, elem in context:
                                 if elem.tag.endswith('PC-CompoundType_id_cid'):
+
+                                    if len(current_record_name_list) > 0:
+                                        for name in current_record_name_list:
+                                            query_name_data.append((name, current_record_pk_id))
+                                        current_record_name_list = []
+
                                     current_record_pk_id = current_record_pk_id + 1
                                     query_record_data.append((current_record_pk_id, self.SOURCE_ID, elem.text))
                                 elif elem.tag.endswith('PC-Urn_label'):
                                     current_label = elem.text
+
+                                elif elem.tag.endswith('PC-Urn_name'):
+                                    current_name = elem.text
+
                                 elif elem.tag.endswith('PC-InfoData_value_sval'):
                                     # Not harvesting InChI or SMILES values
-                                    if current_label == 'IUPAC Name' or current_label == 'InChIKey':
-                                        query_name_data.append((elem.text, current_record_pk_id))
+                                    if current_name != 'CAS-like Style' and current_name != 'Markup' and (current_label == 'IUPAC Name' or current_label == 'InChIKey'):
+                                        if elem.text not in current_record_name_list:
+                                            current_record_name_list.append(elem.text)
+
                                 elem.clear()
+
+                            # Add last record and names that will be skipped due to iteration
+                            if len(current_record_name_list) > 0:
+                                for name in current_record_name_list:
+                                    query_name_data.append((name, current_record_pk_id))
+
                         xml_file.close()
 
                         now = datetime.now()
