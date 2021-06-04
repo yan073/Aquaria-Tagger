@@ -1,0 +1,12 @@
+{
+    "app":"tagservice",
+    "engines":
+        [
+            {   "name":"chembl",
+                "entity_type":29991,
+                "whitelist":"whitelist_chem",
+                "blacklist":"blacklist_chem",
+                "dictionary":"dict_chembl"
+            }
+        ]
+}

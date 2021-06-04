@@ -12,6 +12,8 @@ from itertools import chain
 from pymongo import MongoClient
 from bson.objectid import ObjectId
 
+from visual import generate_visual_data 
+
 CONFIG_SECTION = 'App'
 STAT_COLLECTION = 'stat'
 TOP_NUMBER = 200
@@ -19,23 +21,36 @@ TRIAL_ELEMENTS = ['briefTitle', 'studyDesign', 'briefSummary', 'officialTitle', 
 
 TOTAL_IDENTIFIERS = 'total_tags'
 
-
 def main():
+    # read configuration
     config = read_config()
     db = get_db(config)
     t_c_name = config.get(CONFIG_SECTION, 'mongodb_trialcollection')
-    trial_collection = db[t_c_name]
-    stat_collection = db[STAT_COLLECTION]
     tag_service_url = config.get(CONFIG_SECTION, 'tag_service')
     print (f'.. tag service url: {tag_service_url}')
     tag_interval = config.getint(CONFIG_SECTION, 'tag_interval')
+    # get all the collection
+    trial_collection = db[t_c_name]
+    stat_collection = db[STAT_COLLECTION]
+    cath_collection = db['cathid']
+    cluster_collection = db['keycluster']
+    visualfile_collection = db['visualfile']
+    # load protein dictionaries
+    protein_dict = db['entitydictionary'].find_one()['dictionary']
+    cath_cluster = {'name':'protein' 'dict': cath_dict, 'timestamp': datetime.now()}
+    cath_dict = {}
+    
+    context = {'protein_dict': protein_dict, 'cath_dict': cath_dict, \
+                'stat_collection': stat_collection, \
+                'visualfile_collection': visualfile_collection }
+
     if tag_interval <= 0 :
         tag_interval = 5
     
     # Task scheduling 
     # After every tag_interval/5 mins, do_tag will be called.  
     schedule.every(tag_interval).minutes.do(do_tag, trial_collection = trial_collection, \
-        stat_collection = stat_collection, tag_service_url = tag_service_url)    
+                        tag_service_url = tag_service_url, context = context )    
     
     while True:
         schedule.run_pending()
@@ -208,14 +223,16 @@ def get_all_trial_id(collection):
         ctids.append(doc['ctid'])
     return ctids
 
-def do_tag(trial_collection, stat_collection, tag_service_url):
+def do_tag(trial_collection, tag_service_url, context):
     try:
         tag_updated = tag(trial_collection, tag_service_url)
     except:
         traceback.print_exc(file=sys.stdout)
     try:
         if tag_updated:
-            update_statistics(trial_collection, stat_collection)
+            stat, trial_tags = update_statistics(trial_collection, context['stat_collection'] )
+            #context = {'protein_dict': protein_dict, 'cath_dict': cath_dict, 'stat_collection': stat_collection}
+            generate_visual_data(trial_tags, context)
         else:
             print (f'There is no update of tags.')
     except:
@@ -240,7 +257,7 @@ def read_doc_tags(tid, trial_collection):
     total_words = 0
     if dicts:
         for d_entry in dicts:
-            t_info = { 'name': d_entry['name'], 'tags': [] }
+            t_info = { 'name': d_entry['name'], 'tags': [], 'ctid' : tid }
             raw = d_entry['raw']
             for elem in TRIAL_ELEMENTS:
                 text = untagged[elem]
@@ -250,9 +267,39 @@ def read_doc_tags(tid, trial_collection):
             taginfo.append(t_info)
     return taginfo, total_words
 
+'''
+trial_tags : 
+[
+    [
+        { 'name' : 'protein',
+            'tags' : [
+                {
+                    'word': 'IL-6', 
+                    'identifiers': ['A', 'B']
+                },
+                {
+                    'word': 'ACE2'
+                    'identifiers': ['C']
+                }
+            ]
+        },
+        { 'name' : 'pdb',
+            'tags' : [
+                {
+                    'word': 'vitamin D', 
+                    'identifiers': ['A', 'B']
+                },
+                {
+                    'word': 'chloroquine'
+                    'identifiers': ['A', 'C']
+                }
+            ]
+        }
+    ]
+]
+'''
 def generate_stats(trial_tags, stat_collection, total_words):
     doc_count = len(trial_tags)
-    # grouping
     stats = []
     for doc_tags in trial_tags:
         for t_dict in doc_tags:
@@ -268,11 +315,9 @@ def generate_stats(trial_tags, stat_collection, total_words):
                     stats_dict['words'].append( elem['word'] )
                     stats_dict['identifiers'].extend(elem['identifiers'])
             mentioned = set (chain.from_iterable(w['identifiers'] for w in t_dict['tags']))
-            stats_dict['mentioned'].extend( mentioned )
-    
+            stats_dict['mentioned'].extend( mentioned )    
     # start aggregating
     for stats_dict in stats:
-        # words stat
         stat = {'total_trials': doc_count, 'total_words' : total_words}
         stat['total_tagged_words'] = len(stats_dict['words'])
         dist_words = set({v.casefold(): v for v in stats_dict['words']}.values()) 
@@ -281,22 +326,24 @@ def generate_stats(trial_tags, stat_collection, total_words):
             stat['average_tagged_words_per_trial'] = float(len(stats_dict['words'])) / doc_count
             stat['average_distinct_tagged_words_per_trial'] = float(len(dist_words)) / doc_count
         stat['top200_tagged_words'] =  Counter(stats_dict['words']).most_common(TOP_NUMBER) 
-        # identifier stat
         stat[TOTAL_IDENTIFIERS] = len(stats_dict['identifiers'])
         dist_identifiers = set (stats_dict['identifiers'])
         stat['distinct_identifiers'] = len(dist_identifiers)
         if doc_count >0:
             stat['average_identifiers_per_trial'] = float(len(stats_dict['identifiers'])) / doc_count
             stat['average_distinct_identifiers_per_trial'] = float(len(dist_identifiers)) / doc_count
-        top200_identifiers = Counter(stats_dict['identifiers']).most_common(TOP_NUMBER)
-        identifiers_mentioned = list(Counter(stats_dict['mentioned']).items())
+        #top200_identifiers = Counter(stats_dict['identifiers']).most_common(TOP_NUMBER)
+        #identifiers_mentioned = list(Counter(stats_dict['mentioned']).items())
+        top200_identifiers = Counter(stats_dict['mentioned']).most_common(TOP_NUMBER)
+        identifiers_appeared = list(Counter(stats_dict['identifiers']).items())
         top_ids = []
         for item in top200_identifiers:
             identifier = item[0]
-            search = [x for x in identifiers_mentioned if x[0] == identifier]
-            top_ids.append( { identifier : {'tags': item[1], 'trials': search[0][1]} })
+            search = [x for x in identifiers_appeared if x[0] == identifier]
+            top_ids.append( { identifier : {'trials': item[1], 'tags': search[0][1]} })
         stat['top200_identifiers'] =  top_ids
         save_statistics(stat, stats_dict['name'], stat_collection)
+    return stats
 
 def save_statistics(data, name, stat_collection) :
     doc = {'name':name, 'data': data, 'timestamp': datetime.now()}
@@ -310,8 +357,8 @@ def update_statistics(trial_collection, stat_collection):
         tags, word_count = read_doc_tags(tid, trial_collection)
         trial_tags.append( tags )
         total_words += word_count
-    generate_stats(trial_tags, stat_collection, total_words)
     print (f'end updating statistics.')
+    return generate_stats(trial_tags, stat_collection, total_words), trial_tags
 
 def get_db(config):
     uri = config.get(CONFIG_SECTION, 'mongodb_uri')
