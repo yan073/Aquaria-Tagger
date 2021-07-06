@@ -19,16 +19,13 @@ tagdocs = []
 for doc in trial_collection.find(filter=None, projection=trialfields ):
     tagdocs.append(doc)
 
-with open('trial_tags.json', 'w') as outfile:
-    json.dump(tagdocs, outfile)
-
 for doc in tagdocs:
     doc['submitted'] =  datetime.strptime(doc['untagged']['firstSubmittedDate'], '%B %d, %Y').date()
     doc['posted'] = datetime.strptime(doc['untagged']['firstPostedDate'], '%B %d, %Y').date()
 
 latest = max(tagdocs, key=itemgetter('submitted'))['submitted']
 
-start = date.fromisoformat("2019-10-01")
+start = date.fromisoformat("2019-11-01")
 
 period_offset = 31
 
@@ -58,21 +55,24 @@ chembls = set()
 for entry in timeline:
     for key in entry['chembl'].keys():
         chembls.add(key)
+chembl_list = list(chembls)
 
 from datetime import datetime, timedelta, date
-start = date.fromisoformat("2019-10-01")
-latest =  date.fromisoformat("2021-04-01")
+start = date.fromisoformat("2019-11-01")
+latest =  date.fromisoformat("2021-06-01")
 period_offset = 31 
 import csv
 
-with open('chembl_timeline.csv', 'w', newline='') as csvfile:
+with open('time_chembl.csv', 'w', newline='') as csvfile:
     writer = csv.writer(csvfile, delimiter=',',quotechar='|', quoting=csv.QUOTE_MINIMAL)
-    writer.writerow(['key','value','date])
-    while start < latest:
-        records = [x for x in timeline if date.fromisoformat(x['start']) == start]
-        for r in records:
-            for ch in chembls:
-                cc = r["chembl"].get(ch, 0)
-                writer.writerow([ch, cc, start.isoformat()])
-        start = (start + timedelta(days=period_offset)).replace(day = 1 )
+    row = ['date']
+    row.extend(chembl_list)
+    writer.writerow(row)
+    numc = len(chembl_list)
+    for t in timeline:
+        row = [t['start']]
+        chdata = t['chembl']
+        for i in range(numc):
+            row.append(chdata.get(chembl_list[i],0))
+        writer.writerow(row)
 
